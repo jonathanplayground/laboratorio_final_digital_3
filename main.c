@@ -24,21 +24,31 @@ uint8_t minutos = 0;
 uint8_t parte_baja;
 uint8_t parte_alta;
 uint8_t parteb_baja;
+int pulso;
+int medidor;
+
 
 int conta = 0;
 
 void __interrupt() tcInt(void){     //only process timer0-triggered interrupts
 
+    if( INTCONbits.INTE  && INTCONbits.INTF)
+    {
+        pulso = 1;
+        INTCONbits.INTF = 0;
+        
+        
+    }
    if(INTCONbits.TMR0IE  && INTCONbits.TMR0IF)
    {
         conta++;
         INTCONbits.T0IF=0;
         TMR0=62;
+        
         if(conta==20)
         {
             segundos++;
             conta = 0;
-            //PORTB = segundos;
             PORTBbits.RB7 = !PORTBbits.RB7 ;
             eeprom_write (0x20, segundos);
         }
@@ -48,6 +58,10 @@ void __interrupt() tcInt(void){     //only process timer0-triggered interrupts
         segundos = 0;
         conta = 0;
         eeprom_write (0x21, minutos);
+        }
+        if(minutos == 60)
+        {
+            minutos = 0;
         }
    }
 }
@@ -66,7 +80,7 @@ void temperatura()
 void main(void) {
     
     TRISA = 1;
-    TRISB = 1;
+    TRISB = 0X01;
     TRISC = 0;
     TRISD = 0;
     
@@ -74,13 +88,14 @@ void main(void) {
     ADCON1 = 0X45;      //ajustar voltaje de referencia Vref+
     PORTC = 0;
     PORTD = 0;
-    OPTION_REG = 0x07;
-    INTCON  =   0X80;
+    OPTION_REG = 0x47;
+    INTCON  =   0XD0;       //
     TMR0 = 62;
+    
     
     while(1)
     {
-        INTCON  =   0X80;
+        INTCON  =   0XD0;       //
         temperatura();
         descomponerNumero(temp);
             parte_alta = 2;
@@ -115,7 +130,8 @@ void main(void) {
             
         while(temp >= 80)
         {
-            INTCON  =   0XA0;
+        
+            INTCON  =   0XF0;       //
             temperatura();
             descomponerNumero(temp);
             parte_alta = 2;
@@ -146,7 +162,12 @@ void main(void) {
         PORTD = (parte_alta << 4) | parte_baja;
         __delay_ms(5);
         }
-
+    if(pulso == 1 & conta == conta*3)
+        {
+        segundos = 0;
+        minutos = 0;
+        pulso = 0;
+        }
     }
     return;
 }
